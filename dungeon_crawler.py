@@ -432,6 +432,10 @@ class Game:
         self.screen = pygame.display.set_mode((self.window_width, self.window_height), flags)
         pygame.display.set_caption("Dungeon Crawler")
 
+        # Set window icon (32x32 sword and shield icon)
+        icon_surface = self.create_window_icon()
+        pygame.display.set_icon(icon_surface)
+
         # Set up the font
         self.font = pygame.font.Font(None, FONT_SIZE)
         self.ui_font = pygame.font.Font(None, 24)
@@ -475,6 +479,22 @@ class Game:
         # Settings menu
         self.in_settings = False
         self.settings_selected = 0  # Selected setting option
+
+    def create_window_icon(self):
+        """Create a 32x32 sword and shield icon for the window"""
+        icon = pygame.Surface((32, 32))
+        icon.fill((30, 30, 40))  # Dark background
+
+        # Shield circle
+        pygame.draw.circle(icon, (60, 60, 70), (16, 16), 12)
+        pygame.draw.circle(icon, (120, 120, 140), (16, 16), 12, 2)
+
+        # Sword
+        pygame.draw.line(icon, (200, 200, 220), (16, 6), (16, 20), 3)  # Blade
+        pygame.draw.line(icon, (120, 80, 40), (11, 20), (21, 20), 2)  # Guard
+        pygame.draw.line(icon, (80, 50, 30), (16, 20), (16, 26), 2)  # Handle
+
+        return icon
 
     def create_room(self, room, dungeon):
         """Carve out a room in the dungeon (make it floor tiles)"""
