@@ -152,9 +152,14 @@ A turn-based dungeon crawler game built with Python and Pygame, featuring pixel 
 ### File Structure
 ```
 /Users/jordonmyers/game/
-├── dungeon_crawler.py    # Main game file (1025 lines)
-├── README.md             # Repository readme
-└── CLAUDE.md            # This file - development context
+├── dungeon_crawler.py       # Main game file (1025 lines)
+├── README.md                # Repository readme
+├── CLAUDE.md               # This file - development context
+├── setup.py                # py2app setup configuration
+├── play.command            # Quick launcher (double-click to play)
+├── Dungeon Crawler.app     # Standalone macOS application
+├── launch_game.sh          # Shell launcher script
+└── create_app.sh           # Script to create simple .app bundle
 ```
 
 ### Core Classes
@@ -456,6 +461,42 @@ pip3 install pygame
 #### User Feedback
 - Quote user requests
 - Document responses
+
+---
+
+#### Phase 10: Standalone macOS App
+**Implementation:**
+- Installed PyInstaller for creating bundled macOS applications
+- Built standalone app that includes Python interpreter and all dependencies
+- App can be distributed to other Macs without requiring Python installation
+- PyInstaller automatically signs the app for macOS security
+
+**Files Created:**
+- `Dungeon Crawler.app` - Fully bundled macOS application (27MB)
+- `play.command` - Quick launcher for Terminal (alternative)
+- `launch_game.sh` - Shell launcher script (alternative)
+
+**How to Use:**
+- **Double-click** "Dungeon Crawler.app" to play
+- Can drag app to Dock or Applications folder
+- Can share app with others who have macOS
+
+**Building the App:**
+```bash
+# Install PyInstaller
+pip3 install pyinstaller
+
+# Build the app (creates Dungeon Crawler.app in dist/)
+/Users/jordonmyers/Library/Python/3.9/bin/pyinstaller --onedir --windowed --name="Dungeon Crawler" dungeon_crawler.py -y
+
+# Move app to game directory
+mv dist/Dungeon\ Crawler.app .
+
+# Clean up build artifacts
+rm -rf build dist *.spec
+```
+
+**Note:** Initially tried py2app but encountered macOS launch errors. PyInstaller resolved these issues and created a working standalone application.
 
 ---
 
