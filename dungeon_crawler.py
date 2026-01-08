@@ -285,18 +285,39 @@ class Rect:
                 self.y1 <= other.y2 and self.y2 >= other.y1)
 
 class Enemy:
-    """Represents an enemy creature"""
-    def __init__(self, x, y, name, hp, damage, detection_range, description, xp_value):
+    """Represents an enemy creature with D&D-style stats"""
+    def __init__(self, x, y, name, strength, constitution, intelligence, detection_range, description, xp_value):
         self.x = x
         self.y = y
         self.name = name
-        self.hp = hp
-        self.max_hp = hp
-        self.damage = damage
         self.detection_range = detection_range
         self.description = description
         self.xp_value = xp_value
         self.in_combat = False
+
+        # Base stats (D&D style)
+        self.strength = strength
+        self.constitution = constitution
+        self.intelligence = intelligence
+
+        # Derived stats (calculated from base stats)
+        self.max_hp = self.calculate_max_hp()
+        self.hp = self.max_hp
+        self.max_mana = self.calculate_max_mana()
+        self.mana = self.max_mana
+        self.damage = self.calculate_damage()
+
+    def calculate_max_hp(self):
+        """Calculate max HP from constitution: 8 + (CON * 2)"""
+        return 8 + (self.constitution * 2)
+
+    def calculate_damage(self):
+        """Calculate base damage from strength: 1 + (STR // 3)"""
+        return 1 + (self.strength // 3)
+
+    def calculate_max_mana(self):
+        """Calculate max mana from intelligence: 3 + (INT * 2)"""
+        return 3 + (self.intelligence * 2)
 
     def move_towards(self, target_x, target_y, dungeon, enemies, dungeon_width, dungeon_height):
         """Move one step towards the target position"""
@@ -333,14 +354,35 @@ class Player:
     def __init__(self, x, y):
         self.x = x
         self.y = y
-        self.hp = 20
-        self.max_hp = 20
-        self.damage = 3
         self.level = 1
         self.xp = 0
         self.xp_to_next_level = 10
         self.gold = 0
         self.inventory = []  # List of items (potions, weapons, etc.)
+
+        # Base stats (D&D style)
+        self.strength = 5      # Affects damage
+        self.constitution = 5  # Affects HP
+        self.intelligence = 5  # Affects mana
+
+        # Derived stats (calculated from base stats)
+        self.max_hp = self.calculate_max_hp()
+        self.hp = self.max_hp
+        self.max_mana = self.calculate_max_mana()
+        self.mana = self.max_mana
+        self.damage = self.calculate_damage()
+
+    def calculate_max_hp(self):
+        """Calculate max HP from constitution: 10 + (CON * 2)"""
+        return 10 + (self.constitution * 2)
+
+    def calculate_damage(self):
+        """Calculate base damage from strength: 1 + (STR // 3)"""
+        return 1 + (self.strength // 3)
+
+    def calculate_max_mana(self):
+        """Calculate max mana from intelligence: 5 + (INT * 2)"""
+        return 5 + (self.intelligence * 2)
 
     def move(self, dx, dy, dungeon, dungeon_width, dungeon_height):
         """Move the player if the target position is walkable"""
@@ -376,10 +418,22 @@ class Player:
         self.xp -= self.xp_to_next_level
         self.xp_to_next_level = int(self.xp_to_next_level * 1.5)
 
-        # Stat increases
-        self.max_hp += 5
-        self.hp = self.max_hp  # Full heal on level up
-        self.damage += 1
+        # Increase base stats
+        self.strength += 1
+        self.constitution += 1
+        self.intelligence += 1
+
+        # Recalculate derived stats
+        old_max_hp = self.max_hp
+        old_max_mana = self.max_mana
+
+        self.max_hp = self.calculate_max_hp()
+        self.max_mana = self.calculate_max_mana()
+        self.damage = self.calculate_damage()
+
+        # Heal by the amount of HP/mana gained
+        self.hp += (self.max_hp - old_max_hp)
+        self.mana += (self.max_mana - old_max_mana)
 
     def add_item(self, item):
         """Add an item to inventory"""
@@ -479,6 +533,14 @@ class Game:
         # Settings menu
         self.in_settings = False
         self.settings_selected = 0  # Selected setting option
+
+        # Screen shake for animations
+        self.screen_shake_amount = 0
+        self.screen_shake_duration = 0
+
+        # Continuous movement
+        self.move_delay = 150  # milliseconds between moves when holding key
+        self.last_move_time = 0
 
     def create_window_icon(self):
         """Create a 32x32 sword and shield icon for the window"""
@@ -580,15 +642,30 @@ class Game:
                 enemy_type = random.choice(['goblin', 'orc', 'troll'])
 
                 if enemy_type == 'goblin':
-                    enemy = Enemy(x, y, 'Goblin', hp=5, damage=2, detection_range=3,
+                    # Goblin: Low STR, low CON, medium INT (sneaky but weak)
+                    # Stats: STR=2, CON=2, INT=4
+                    # Results: HP=12, DMG=1, Mana=11
+                    enemy = Enemy(x, y, 'Goblin',
+                                strength=2, constitution=2, intelligence=4,
+                                detection_range=3,
                                 description="A small, cowardly creature. Weak but cunning. Prefers to ambush the unwary.",
                                 xp_value=3)
                 elif enemy_type == 'orc':
-                    enemy = Enemy(x, y, 'Orc', hp=8, damage=3, detection_range=5,
+                    # Orc: High STR, medium CON, low INT (strong brute)
+                    # Stats: STR=6, CON=4, INT=1
+                    # Results: HP=16, DMG=3, Mana=5
+                    enemy = Enemy(x, y, 'Orc',
+                                strength=6, constitution=4, intelligence=1,
+                                detection_range=5,
                                 description="A brutish warrior with crude armor. Aggressive and territorial. Attacks on sight.",
                                 xp_value=5)
                 else:  # troll
-                    enemy = Enemy(x, y, 'Troll', hp=12, damage=4, detection_range=7,
+                    # Troll: Very high STR and CON, very low INT (tank)
+                    # Stats: STR=9, CON=7, INT=1
+                    # Results: HP=22, DMG=4, Mana=5
+                    enemy = Enemy(x, y, 'Troll',
+                                strength=9, constitution=7, intelligence=1,
+                                detection_range=7,
                                 description="A massive, hulking beast. Tough hide and crushing strength. Guards its domain fiercely.",
                                 xp_value=8)
 
@@ -640,12 +717,23 @@ class Game:
         if self.game_over or self.in_battle:
             return
 
-        # Try to move
+        # Calculate target position
+        target_x = self.player.x + dx
+        target_y = self.player.y + dy
+
+        # Check if there's an enemy at the target position
+        for enemy in self.enemies:
+            if enemy.x == target_x and enemy.y == target_y:
+                # Bump into enemy - start battle with screen shake!
+                self.screen_shake_amount = 5
+                self.screen_shake_duration = 10
+                self.start_battle(enemy)
+                return
+
+        # No enemy at target - try to move normally
         if self.player.move(dx, dy, self.dungeon, self.dungeon_width, self.dungeon_height):
             # Check for items at new position
             self.check_item_pickup()
-            # Check if we triggered a battle
-            self.check_battle_trigger()
 
     def check_item_pickup(self):
         """Check if player is standing on an item and pick it up"""
@@ -678,21 +766,12 @@ class Game:
         if len(self.messages) > 3:
             self.messages.pop(0)
 
-    def check_battle_trigger(self):
-        """Check if player entered an enemy's detection range"""
-        for enemy in self.enemies:
-            distance = abs(enemy.x - self.player.x) + abs(enemy.y - self.player.y)
-            if distance <= enemy.detection_range and not enemy.in_combat:
-                # Start battle!
-                self.start_battle(enemy)
-                break
-
     def start_battle(self, enemy):
         """Initialize a battle with an enemy"""
         self.in_battle = True
         self.current_enemy = enemy
         enemy.in_combat = True
-        self.battle_log = [f"A {enemy.name} spotted you from {abs(enemy.x - self.player.x) + abs(enemy.y - self.player.y)}m away!"]
+        self.battle_log = [f"You encounter a {enemy.name}!"]
         self.selected_action = 0
         self.player_defending = False
 
@@ -874,27 +953,64 @@ class Game:
                     elif event.key == pygame.K_RETURN or event.key == pygame.K_SPACE:
                         self.execute_battle_action()
                 else:
-                    # Movement controls
+                    # Movement controls - immediate response on key press
                     if event.key == pygame.K_w or event.key == pygame.K_UP:
                         self.player_move(0, -1)
+                        self.last_move_time = pygame.time.get_ticks()
                     elif event.key == pygame.K_s or event.key == pygame.K_DOWN:
                         self.player_move(0, 1)
+                        self.last_move_time = pygame.time.get_ticks()
                     elif event.key == pygame.K_a or event.key == pygame.K_LEFT:
                         self.player_move(-1, 0)
+                        self.last_move_time = pygame.time.get_ticks()
                     elif event.key == pygame.K_d or event.key == pygame.K_RIGHT:
                         self.player_move(1, 0)
+                        self.last_move_time = pygame.time.get_ticks()
+
+        # Continuous movement - check for held keys
+        if not self.in_battle and not self.in_settings and not self.game_over:
+            current_time = pygame.time.get_ticks()
+            if current_time - self.last_move_time >= self.move_delay:
+                keys = pygame.key.get_pressed()
+                moved = False
+
+                # Check movement keys (WASD and arrows)
+                if keys[pygame.K_w] or keys[pygame.K_UP]:
+                    self.player_move(0, -1)
+                    moved = True
+                elif keys[pygame.K_s] or keys[pygame.K_DOWN]:
+                    self.player_move(0, 1)
+                    moved = True
+                elif keys[pygame.K_a] or keys[pygame.K_LEFT]:
+                    self.player_move(-1, 0)
+                    moved = True
+                elif keys[pygame.K_d] or keys[pygame.K_RIGHT]:
+                    self.player_move(1, 0)
+                    moved = True
+
+                # Update last move time if we actually moved
+                if moved:
+                    self.last_move_time = current_time
 
     def render(self):
         """Draw the dungeon and player to the screen"""
         # Clear screen with dark background
         self.screen.fill(DARK_GRAY)
 
+        # Calculate screen shake offset
+        shake_x = 0
+        shake_y = 0
+        if self.screen_shake_duration > 0:
+            shake_x = random.randint(-self.screen_shake_amount, self.screen_shake_amount)
+            shake_y = random.randint(-self.screen_shake_amount, self.screen_shake_amount)
+            self.screen_shake_duration -= 1
+
         # Draw the dungeon
         for y in range(self.dungeon_height):
             for x in range(self.dungeon_width):
-                # Calculate pixel position
-                pixel_x = x * TILE_SIZE
-                pixel_y = y * TILE_SIZE
+                # Calculate pixel position with screen shake
+                pixel_x = x * TILE_SIZE + shake_x
+                pixel_y = y * TILE_SIZE + shake_y
 
                 # Determine what to draw
                 tile = self.dungeon[y][x]
@@ -983,7 +1099,12 @@ class Game:
                 self.screen.blit(desc_surface, (panel_x + 20, y_offset))
                 y_offset += 25
 
-            # Enemy stats
+            # Enemy base stats
+            base_stats = self.font.render(f"STR: {self.current_enemy.strength}  CON: {self.current_enemy.constitution}  INT: {self.current_enemy.intelligence}", True, GRAY)
+            self.screen.blit(base_stats, (panel_x + 20, y_offset))
+            y_offset += 20
+
+            # Enemy combat stats
             stats_text = self.font.render(f"Damage: {self.current_enemy.damage} | Range: {self.current_enemy.detection_range}m", True, YELLOW)
             self.screen.blit(stats_text, (panel_x + 20, y_offset))
             y_offset += 25
@@ -1098,6 +1219,21 @@ class Game:
             player_hp_width = int((self.player.hp / self.player.max_hp) * bar_width)
             pygame.draw.rect(self.screen, GREEN, (panel_x + 20, y_offset, player_hp_width, bar_height))
             y_offset += 25
+
+            # Mana bar
+            mana_text = self.font.render(f"Mana: {self.player.mana}/{self.player.max_mana}", True, WHITE)
+            self.screen.blit(mana_text, (panel_x + 20, y_offset))
+            y_offset += 18
+
+            pygame.draw.rect(self.screen, DARK_GRAY, (panel_x + 20, y_offset, bar_width, bar_height))
+            player_mana_width = int((self.player.mana / self.player.max_mana) * bar_width) if self.player.max_mana > 0 else 0
+            pygame.draw.rect(self.screen, BLUE, (panel_x + 20, y_offset, player_mana_width, bar_height))
+            y_offset += 25
+
+            # Base stats
+            stats_text = self.font.render(f"STR: {self.player.strength}  CON: {self.player.constitution}  INT: {self.player.intelligence}", True, GRAY)
+            self.screen.blit(stats_text, (panel_x + 20, y_offset))
+            y_offset += 20
 
             damage_text = self.font.render(f"Damage: {self.player.damage}", True, WHITE)
             self.screen.blit(damage_text, (panel_x + 20, y_offset))
